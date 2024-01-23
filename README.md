@@ -3,7 +3,7 @@ FastInsert.SqlServer
 
 ![Nuget](https://img.shields.io/nuget/v/FastInsert.SqlServer)
 
-FastInsert is a .NET library to bulk insert objects into SQL Server tables. `System.Data.DataTable`.
+FastInsert is a .NET library to bulk insert objects into SQL Server tables.
 
 It uses Source Generators to generate the conversion code during the build instead of using reflection during runtime.
 
