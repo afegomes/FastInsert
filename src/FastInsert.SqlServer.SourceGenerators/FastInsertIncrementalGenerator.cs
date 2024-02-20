@@ -95,8 +95,7 @@ namespace FastInsert.SqlServer.SourceGenerators
                 var entityName = GetFullType(entitySymbol);
                 var tableName = GetTableName(tableSymbol, entitySymbol);
                 var batchSize = GetBatchSize(bulkInsertSymbol, entitySymbol);
-
-                var writerName = $"{entitySymbol.Name}Writer";
+                var writerName = GetWriterName(entitySymbol);
 
                 var properties = GetProperties(entitySymbol);
                 var mappings = new List<MappingConfiguration>(properties.Count);
@@ -122,6 +121,27 @@ namespace FastInsert.SqlServer.SourceGenerators
             }
 
             ctx.AddSource("DependencyInjectionExtensions.g.cs", GenerateDependencyInjectionExtensions(names));
+        }
+
+        private static string GetWriterName(ISymbol symbol)
+        {
+            var name = $"{symbol.Name}Writer";
+            var parent = symbol;
+
+            while (true)
+            {
+                if (parent.ContainingType != null && !string.IsNullOrEmpty(parent.Name))
+                {
+                    parent = parent.ContainingType;
+                    name = $"{parent.Name}{name}";
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return name;
         }
 
         private static string GenerateDataWriter(string entityName, string writerName, string tableName, int batchSize, List<MappingConfiguration> mappings)
@@ -259,6 +279,19 @@ namespace FastInsert.SqlServer.SourceGenerators
         {
             var name = symbol.Name;
             var parent = symbol;
+
+            while (true)
+            {
+                if (parent.ContainingType != null && !string.IsNullOrEmpty(parent.Name))
+                {
+                    parent = parent.ContainingType;
+                    name = $"{parent.Name}.{name}";
+                }
+                else
+                {
+                    break;
+                }
+            }
 
             while (true)
             {
