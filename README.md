@@ -9,7 +9,7 @@ It uses Source Generators to generate the conversion code during the build inste
 
 ### Prerequisites
 
-The app needs to target .NET Standard 2.1 or any .NET implementation of it.
+The app needs to target .NET Standard 2.0 or any .NET implementation of it.
 
 ### Installation
 

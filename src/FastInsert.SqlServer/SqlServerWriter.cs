@@ -20,14 +20,15 @@ namespace FastInsert.SqlServer
 
         public async Task WriteAsync(IEnumerable<T> data, CancellationToken cancellationToken)
         {
-            using var sqlBulkCopy = new SqlBulkCopy(_connection, SqlBulkCopyOptions.TableLock, null);
-            sqlBulkCopy.BatchSize = _batchSize;
+            using (var sqlBulkCopy = new SqlBulkCopy(_connection, SqlBulkCopyOptions.TableLock, null))
+            using (var reader = CreateDataReader(data))
+            {
+                sqlBulkCopy.BatchSize = _batchSize;
 
-            ConfigureMappings(sqlBulkCopy);
+                ConfigureMappings(sqlBulkCopy);
 
-            using var reader = CreateDataReader(data);
-
-            await sqlBulkCopy.WriteToServerAsync(reader, cancellationToken);
+                await sqlBulkCopy.WriteToServerAsync(reader, cancellationToken);
+            }
         }
 
         protected abstract IDataReader CreateDataReader(IEnumerable<T> data);

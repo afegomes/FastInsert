@@ -33,12 +33,15 @@ namespace FastInsert.SqlServer.SourceGenerators
         {
             cancellation.ThrowIfCancellationRequested();
 
-            return node switch
+            switch (node)
             {
-                ClassDeclarationSyntax classDeclarationSyntax => classDeclarationSyntax.AttributeLists.Count > 0,
-                StructDeclarationSyntax structDeclarationSyntax => structDeclarationSyntax.AttributeLists.Count > 0,
-                _ => false
-            };
+                case ClassDeclarationSyntax classDeclarationSyntax:
+                    return classDeclarationSyntax.AttributeLists.Count > 0;
+                case StructDeclarationSyntax structDeclarationSyntax:
+                    return structDeclarationSyntax.AttributeLists.Count > 0;
+                default:
+                    return false;
+            }
         }
 
         private static TypeDeclarationSyntax GetEntityTypeDeclarationSyntax(GeneratorSyntaxContext ctx, CancellationToken cancellation)
