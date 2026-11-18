@@ -1,8 +1,7 @@
-﻿using System;
-using System.CodeDom.Compiler;
-using System.Collections.Generic;
+﻿using System.CodeDom.Compiler;
 using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using Microsoft.CodeAnalysis;
@@ -19,14 +18,27 @@ namespace FastInsert.SqlServer.SourceGenerators
 
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
-            var entities = context.SyntaxProvider
-                .CreateSyntaxProvider(IsCandidate, GetEntityTypeDeclarationSyntax)
-                .Where(type => type != null)
+            var entityModels = context.SyntaxProvider
+                .ForAttributeWithMetadataName(
+                    BulkInsertAttribute,
+                    predicate: IsCandidate,
+                    transform: ExtractEntityModel)
+                .Where(type => type != null);
+
+            context.RegisterSourceOutput(entityModels,
+                (spc, model) => { spc.AddSource($"{model.WriterName}.g.cs", GenerateDataWriter(model)); });
+
+            var diEntries = entityModels
+                .Select((m, _) => new DiEntry(m.EntityFullName, $"FastInsert.Writers.{m.WriterName}"))
                 .Collect();
 
-            var combined = context.CompilationProvider.Combine(entities);
-
-            context.RegisterSourceOutput(combined, (ctx, source) => GenerateSources(source.Left, source.Right, ctx));
+            context.RegisterSourceOutput(diEntries, (spc, entries) =>
+            {
+                if (!entries.IsDefaultOrEmpty)
+                {
+                    spc.AddSource("DependencyInjectionExtensions.g.cs", GenerateDependencyInjectionExtensions(entries));
+                }
+            });
         }
 
         private static bool IsCandidate(SyntaxNode node, CancellationToken cancellation)
@@ -44,86 +56,68 @@ namespace FastInsert.SqlServer.SourceGenerators
             }
         }
 
-        private static TypeDeclarationSyntax GetEntityTypeDeclarationSyntax(GeneratorSyntaxContext ctx, CancellationToken cancellation)
+        private static EntityModel ExtractEntityModel(GeneratorAttributeSyntaxContext ctx, CancellationToken ct)
         {
-            var declaration = (TypeDeclarationSyntax)ctx.Node;
-
-            foreach (var list in declaration.AttributeLists)
+            if (!(ctx.TargetSymbol is INamedTypeSymbol entitySymbol))
             {
-                foreach (var attributeSyntax in list.Attributes)
-                {
-                    cancellation.ThrowIfCancellationRequested();
-
-                    if (!(ctx.SemanticModel.GetSymbolInfo(attributeSyntax).Symbol is IMethodSymbol attributeSymbol))
-                    {
-                        continue;
-                    }
-
-                    var fullName = attributeSymbol.ContainingType.ToDisplayString();
-
-                    if (fullName == BulkInsertAttribute)
-                    {
-                        return declaration;
-                    }
-                }
+                return null;
             }
 
-            return null;
-        }
+            ct.ThrowIfCancellationRequested();
 
-        private static void GenerateSources(Compilation compilation, ImmutableArray<TypeDeclarationSyntax> classes, SourceProductionContext ctx)
-        {
-            if (classes.IsDefaultOrEmpty)
+            var bulkInsertAttr = ctx.Attributes
+                .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == BulkInsertAttribute);
+            var batchSize = 1000;
+
+            if (bulkInsertAttr?.ConstructorArguments.Length > 0 &&
+                bulkInsertAttr.ConstructorArguments[0].Value is int size && size > 0)
             {
-                return;
+                batchSize = size;
             }
 
-            var names = new Dictionary<string, string>();
+            var tableName = entitySymbol.Name;
+            var tableAttr = entitySymbol.GetAttributes()
+                .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == TableAttribute);
 
-            var bulkInsertSymbol = compilation.GetTypeByMetadataName(BulkInsertAttribute);
-            var columnSymbol = compilation.GetTypeByMetadataName(ColumnAttribute);
-            var tableSymbol = compilation.GetTypeByMetadataName(TableAttribute);
-
-            foreach (var typeDeclarationSyntax in classes)
+            if (tableAttr?.ConstructorArguments.Length > 0
+                && tableAttr.ConstructorArguments[0].Value is string customTableName
+                && !string.IsNullOrEmpty(customTableName))
             {
-                ctx.CancellationToken.ThrowIfCancellationRequested();
-
-                var model = compilation.GetSemanticModel(typeDeclarationSyntax.SyntaxTree);
-
-                if (!(model.GetDeclaredSymbol(typeDeclarationSyntax) is INamedTypeSymbol entitySymbol))
-                {
-                    continue;
-                }
-
-                var entityName = GetFullType(entitySymbol);
-                var tableName = GetTableName(tableSymbol, entitySymbol);
-                var batchSize = GetBatchSize(bulkInsertSymbol, entitySymbol);
-                var writerName = GetWriterName(entitySymbol);
-
-                var properties = GetProperties(entitySymbol);
-                var mappings = new List<MappingConfiguration>(properties.Count);
-
-                for (var i = 0; i < properties.Count; i++)
-                {
-                    var property = properties[i];
-                    var columnName = GetColumnName(columnSymbol, property);
-
-                    var config = new MappingConfiguration
-                    {
-                        Index = i,
-                        ColumnName = columnName,
-                        PropertyName = property.Name
-                    };
-
-                    mappings.Add(config);
-                }
-
-                ctx.AddSource($"{writerName}.g.cs", GenerateDataWriter(entityName, writerName, tableName, batchSize, mappings));
-
-                names.Add(entityName, $"FastInsert.Writers.{writerName}");
+                tableName = customTableName;
             }
 
-            ctx.AddSource("DependencyInjectionExtensions.g.cs", GenerateDependencyInjectionExtensions(names));
+            var properties = GetProperties(entitySymbol);
+            var mappingsBuilder = ImmutableArray.CreateBuilder<PropertyMappingModel>(properties.Length);
+
+            for (var i = 0; i < properties.Length; i++)
+            {
+                var prop = properties[i];
+                var colName = prop.Name;
+                var colAttr = prop.GetAttributes()
+                    .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == ColumnAttribute);
+
+                if (colAttr?.ConstructorArguments.Length > 0
+                    && colAttr.ConstructorArguments[0].Value is string customColName
+                    && !string.IsNullOrEmpty(customColName))
+                {
+                    colName = customColName;
+                }
+
+                mappingsBuilder.Add(new PropertyMappingModel(
+                    i,
+                    prop.Name,
+                    colName,
+                    prop.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                    prop.Type.SpecialType,
+                    prop.Type.IsValueType && prop.Type.NullableAnnotation != NullableAnnotation.Annotated));
+            }
+
+            return new EntityModel(
+                entitySymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+                GetWriterName(entitySymbol),
+                tableName,
+                batchSize,
+                new EquatableArray<PropertyMappingModel>(mappingsBuilder.ToImmutable()));
         }
 
         private static string GetWriterName(ISymbol symbol)
@@ -147,7 +141,7 @@ namespace FastInsert.SqlServer.SourceGenerators
             return name;
         }
 
-        private static string GenerateDataWriter(string entityName, string writerName, string tableName, int batchSize, List<MappingConfiguration> mappings)
+        private static string GenerateDataWriter(EntityModel model)
         {
             var source = new StringBuilder();
 
@@ -158,16 +152,16 @@ namespace FastInsert.SqlServer.SourceGenerators
                 writer.WriteLine("{");
                 writer.Indent++;
 
-                writer.WriteLine($"internal sealed class {writerName} : FastInsert.SqlServer.SqlServerWriter<{entityName}>");
+                writer.WriteLine($"internal sealed class {model.WriterName} : FastInsert.SqlServer.SqlServerWriter<{model.EntityFullName}>");
                 writer.WriteLine("{");
                 writer.Indent++;
 
-                writer.WriteLine($"public {writerName}(Microsoft.Data.SqlClient.SqlConnection connection) : base({batchSize}, connection)");
+                writer.WriteLine($"public {model.WriterName}(Microsoft.Data.SqlClient.SqlConnection connection) : base({model.BatchSize}, connection)");
                 writer.WriteLine("{");
                 writer.WriteLine("}");
                 writer.WriteLine();
 
-                writer.WriteLine($"protected override System.Data.IDataReader CreateDataReader(IEnumerable<{entityName}> data)");
+                writer.WriteLine($"protected override System.Data.IDataReader CreateDataReader(IEnumerable<{model.EntityFullName}> data)");
                 writer.WriteLine("{");
                 writer.Indent++;
                 writer.WriteLine("return new InternalDataReader(data);");
@@ -175,12 +169,12 @@ namespace FastInsert.SqlServer.SourceGenerators
                 writer.WriteLine("}");
                 writer.WriteLine();
 
-                WriteConfigureMappingsMethod(writer, tableName, mappings);
+                WriteConfigureMappingsMethod(writer, model.TableName, model.Mappings);
 
-                writer.WriteLine($"private sealed class InternalDataReader(IEnumerable<{entityName}> data) : FastInsert.Core.DataReaderBase<{entityName}>({mappings.Count}, data)");
+                writer.WriteLine($"private sealed class InternalDataReader(IEnumerable<{model.EntityFullName}> data) : FastInsert.Core.DataReaderBase<{model.EntityFullName}>({model.Mappings.Length}, data)");
                 writer.WriteLine("{");
                 writer.Indent++;
-                WriteGetValueMethod(writer, mappings);
+                WriteGetValueMethod(writer, model.Mappings);
                 writer.Indent--;
                 writer.WriteLine("}");
 
@@ -194,7 +188,7 @@ namespace FastInsert.SqlServer.SourceGenerators
             return source.ToString();
         }
 
-        private static string GenerateDependencyInjectionExtensions(Dictionary<string, string> names)
+        private static string GenerateDependencyInjectionExtensions(ImmutableArray<DiEntry> entries)
         {
             var source = new StringBuilder();
 
@@ -216,9 +210,9 @@ namespace FastInsert.SqlServer.SourceGenerators
                 writer.WriteLine("{");
                 writer.Indent++;
 
-                foreach (var entry in names)
+                foreach (var entry in entries)
                 {
-                    writer.WriteLine($"services.AddScoped<FastInsert.Core.IDataWriter<{entry.Key}>, {entry.Value}>();");
+                    writer.WriteLine($"services.AddScoped<FastInsert.Core.IDataWriter<{entry.EntityFullName}>, {entry.WriterFullName}>();");
                 }
 
                 writer.WriteLine();
@@ -237,7 +231,8 @@ namespace FastInsert.SqlServer.SourceGenerators
             return source.ToString();
         }
 
-        private static void WriteConfigureMappingsMethod(IndentedTextWriter writer, string tableName, List<MappingConfiguration> mappings)
+        private static void WriteConfigureMappingsMethod(IndentedTextWriter writer, string tableName,
+            EquatableArray<PropertyMappingModel> mappings)
         {
             writer.WriteLine("protected override void ConfigureMappings(Microsoft.Data.SqlClient.SqlBulkCopy sqlBulkCopy)");
             writer.WriteLine("{");
@@ -255,7 +250,7 @@ namespace FastInsert.SqlServer.SourceGenerators
             writer.WriteLine();
         }
 
-        private static void WriteGetValueMethod(IndentedTextWriter writer, List<MappingConfiguration> mappings)
+        private static void WriteGetValueMethod(IndentedTextWriter writer, EquatableArray<PropertyMappingModel> mappings)
         {
             writer.WriteLine("public override object GetValue(int i)");
             writer.WriteLine("{");
@@ -278,151 +273,26 @@ namespace FastInsert.SqlServer.SourceGenerators
             writer.WriteLine("}");
         }
 
-        private static string GetFullType(ISymbol symbol)
+        private static ImmutableArray<IPropertySymbol> GetProperties(ITypeSymbol symbol)
         {
-            var name = symbol.Name;
-            var parent = symbol;
+            var builder = ImmutableArray.CreateBuilder<IPropertySymbol>();
 
-            while (true)
+            if (symbol.BaseType != null && symbol.BaseType.SpecialType != SpecialType.System_Object)
             {
-                if (parent.ContainingType != null && !string.IsNullOrEmpty(parent.Name))
-                {
-                    parent = parent.ContainingType;
-                    name = $"{parent.Name}.{name}";
-                }
-                else
-                {
-                    break;
-                }
-            }
-
-            while (true)
-            {
-                parent = parent.ContainingNamespace;
-
-                if (parent is null || string.IsNullOrEmpty(parent.Name))
-                {
-                    break;
-                }
-
-                name = $"{parent.Name}.{name}";
-            }
-
-            return name;
-        }
-
-        private static int GetBatchSize(ISymbol attributeSymbol, ISymbol classSymbol)
-        {
-            foreach (var attributeData in classSymbol.GetAttributes())
-            {
-                if (!attributeSymbol.Equals(attributeData.AttributeClass, SymbolEqualityComparer.Default))
-                {
-                    continue;
-                }
-
-                if (attributeData.ConstructorArguments.Length == 0)
-                {
-                    break;
-                }
-
-                var value = attributeData.ConstructorArguments[0].Value;
-
-                if (value is null)
-                {
-                    break;
-                }
-
-                var batchSize = (int)value;
-
-                if (batchSize < 1)
-                {
-                    break;
-                }
-
-                return batchSize;
-            }
-
-            throw new NotSupportedException();
-        }
-
-        private static string GetTableName(ISymbol attributeSymbol, ISymbol classSymbol)
-        {
-            foreach (var attributeData in classSymbol.GetAttributes())
-            {
-                if (!attributeSymbol.Equals(attributeData.AttributeClass, SymbolEqualityComparer.Default))
-                {
-                    continue;
-                }
-
-                if (attributeData.ConstructorArguments.Length == 0)
-                {
-                    break;
-                }
-
-                var tableName = (string)attributeData.ConstructorArguments[0].Value;
-
-                if (string.IsNullOrEmpty(tableName))
-                {
-                    break;
-                }
-
-                return tableName;
-            }
-
-            return classSymbol.Name;
-        }
-
-        private static string GetColumnName(ISymbol attributeSymbol, ISymbol propertySymbol)
-        {
-            foreach (var attributeData in propertySymbol.GetAttributes())
-            {
-                if (!attributeSymbol.Equals(attributeData.AttributeClass, SymbolEqualityComparer.Default))
-                {
-                    continue;
-                }
-
-                var propertyName = (string)attributeData.ConstructorArguments[0].Value;
-
-                if (string.IsNullOrEmpty(propertyName))
-                {
-                    break;
-                }
-
-                return propertyName;
-            }
-
-            return propertySymbol.Name;
-        }
-
-        private static List<IPropertySymbol> GetProperties(ITypeSymbol symbol)
-        {
-            var properties = new List<IPropertySymbol>();
-
-            if (symbol.BaseType != null)
-            {
-                properties.AddRange(GetProperties(symbol.BaseType));
+                builder.AddRange(GetProperties(symbol.BaseType));
             }
 
             foreach (var member in symbol.GetMembers())
             {
-                if (member.IsStatic || member.DeclaredAccessibility != Accessibility.Public || !(member is IPropertySymbol property))
+                if (!member.IsStatic
+                    && member.DeclaredAccessibility == Accessibility.Public
+                    && member is IPropertySymbol prop)
                 {
-                    continue;
+                    builder.Add(prop);
                 }
-
-                properties.Add(property);
             }
 
-            return properties;
+            return builder.ToImmutable();
         }
-    }
-
-    internal sealed class MappingConfiguration
-    {
-        public int Index { get; set; }
-
-        public string ColumnName { get; set; }
-
-        public string PropertyName { get; set; }
     }
 }
