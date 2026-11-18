@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace FastInsert.SqlServer.SourceGenerators
+namespace FastInsert.SourceGenerators
 {
     internal sealed class EntityModel : IEquatable<EntityModel>
     {

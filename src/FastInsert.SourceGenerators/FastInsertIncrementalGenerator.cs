@@ -7,7 +7,7 @@ using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace FastInsert.SqlServer.SourceGenerators
+namespace FastInsert.SourceGenerators
 {
     [Generator]
     public sealed class FastInsertIncrementalGenerator : IIncrementalGenerator

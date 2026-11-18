@@ -25,7 +25,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\FastInsert.SqlServer.SourceGenerators\FastInsert.SqlServer.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\..\src\FastInsert.SourceGenerators\FastInsert.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
         <ProjectReference Include="..\..\src\FastInsert.SqlServer\FastInsert.SqlServer.csproj" />
     </ItemGroup>
 

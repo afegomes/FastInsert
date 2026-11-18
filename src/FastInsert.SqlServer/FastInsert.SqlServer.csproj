@@ -27,13 +27,13 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\FastInsert.SqlServer.SourceGenerators\FastInsert.SqlServer.SourceGenerators.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="None" />
+      <ProjectReference Include="..\FastInsert.SourceGenerators\FastInsert.SourceGenerators.csproj" PrivateAssets="all" ReferenceOutputAssembly="false" OutputItemType="None" />
     </ItemGroup>
 
     <ItemGroup>
         <None Include="..\..\README.MD" Pack="true" PackagePath="\" />
         <None Include="..\..\icon.png" Pack="true" PackagePath="\" />
-        <None Include="..\FastInsert.SqlServer.SourceGenerators\bin\$(Configuration)\netstandard2.0\FastInsert.SqlServer.SourceGenerators.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+        <None Include="..\FastInsert.SourceGenerators\bin\$(Configuration)\netstandard2.0\FastInsert.SourceGenerators.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     </ItemGroup>
 
 </Project>

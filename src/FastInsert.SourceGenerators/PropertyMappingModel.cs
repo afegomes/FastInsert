@@ -1,7 +1,7 @@
 ﻿using System;
 using Microsoft.CodeAnalysis;
 
-namespace FastInsert.SqlServer.SourceGenerators
+namespace FastInsert.SourceGenerators
 {
     internal sealed class PropertyMappingModel : IEquatable<PropertyMappingModel>
     {
