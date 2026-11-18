@@ -24,7 +24,7 @@ Use the .NET CLI to install the package and its dependencies:
 The classes targeted for conversion should have the `BulkInsert` attribute:
 
    ```csharp
-   using FastInsert.Core;
+   using FastInsert.SqlServer;
    
    namespace MyProject;
    
@@ -34,10 +34,10 @@ The classes targeted for conversion should have the `BulkInsert` attribute:
    }
    ```
 
-The batch size will be 1000 by default, but it can be customized:
+The batch size will be 10000 by default, but it can be customized:
 
    ```csharp
-   using FastInsert.Core;
+   using FastInsert.SqlServer;
    
    namespace MyProject;
    
@@ -47,17 +47,7 @@ The batch size will be 1000 by default, but it can be customized:
    }
    ```
 
-By default, the class will be mapped to a table with the same name, but this can be overridden using
-the `System.ComponentModel.DataAnnotations.Schema.TableAttribute` attribute:
-
-   ```csharp
-   [Table("Customers")]
-   public class Customer
-   {
-   }
-   ```
-
-Also by default, the properties will be mapped to columns with the same name. The name can be overridden using
+By default, the properties will be mapped to columns with the same name. The name can be overridden using
 the `System.ComponentModel.DataAnnotations.Schema.ColumnAttribute` attribute:
 
    ```csharp
@@ -68,7 +58,7 @@ the `System.ComponentModel.DataAnnotations.Schema.ColumnAttribute` attribute:
    }
    ```
 
-To insert the data, you need to inject `FastInsert.Core.IDataWriter<T>`:
+To insert the data, you need to inject `FastInsert.SqlServer.IDataWriter<T>`:
 
    ```csharp
    public class CustomerService(IDataWriter<Customer> dataWriter)
