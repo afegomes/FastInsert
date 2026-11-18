@@ -8,8 +8,6 @@ namespace FastInsert.SqlServer.SourceGenerators
 
         public string WriterName { get; }
 
-        public string TableName { get; }
-
         public int BatchSize { get; }
 
         public EquatableArray<PropertyMappingModel> Mappings { get; }
@@ -17,13 +15,11 @@ namespace FastInsert.SqlServer.SourceGenerators
         public EntityModel(
             string entityFullName,
             string writerName,
-            string tableName,
             int batchSize,
             EquatableArray<PropertyMappingModel> mappings)
         {
             EntityFullName = entityFullName;
             WriterName = writerName;
-            TableName = tableName;
             BatchSize = batchSize;
             Mappings = mappings;
         }
@@ -42,7 +38,6 @@ namespace FastInsert.SqlServer.SourceGenerators
 
             return EntityFullName == other.EntityFullName
                    && WriterName == other.WriterName
-                   && TableName == other.TableName
                    && BatchSize == other.BatchSize
                    && Mappings.Equals(other.Mappings);
         }
@@ -56,7 +51,6 @@ namespace FastInsert.SqlServer.SourceGenerators
                 var hash = 17;
                 hash = hash * 31 + (EntityFullName?.GetHashCode() ?? 0);
                 hash = hash * 31 + (WriterName?.GetHashCode() ?? 0);
-                hash = hash * 31 + (TableName?.GetHashCode() ?? 0);
                 hash = hash * 31 + BatchSize.GetHashCode();
                 hash = hash * 31 + Mappings.GetHashCode();
                 return hash;

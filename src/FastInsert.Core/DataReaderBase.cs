@@ -1,183 +1,74 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Data;
+using System.Collections;
+using System.Data.Common;
 
 namespace FastInsert.Core
 {
-    public abstract class DataReaderBase<T> : IDataReader
+    public abstract class DataReaderBase : DbDataReader
     {
-        private readonly IEnumerator<T> _iterator;
+        private bool _closed;
 
-        protected DataReaderBase(int fieldCount, IEnumerable<T> data)
+        protected DataReaderBase(int fieldCount)
         {
-            if (fieldCount <= 0)
-            {
-                throw new ArgumentOutOfRangeException(nameof(fieldCount), "Must be greater than 0");
-            }
-
-            if (data is null)
-            {
-                throw new ArgumentNullException(nameof(data));
-            }
-
-            FieldCount = fieldCount;
-
-            _iterator = data.GetEnumerator();
+            FieldCount = fieldCount > 0
+                ? fieldCount
+                : throw new ArgumentOutOfRangeException(nameof(fieldCount), "Must be greater than 0");
         }
 
-        protected T Current => _iterator.Current;
+        public override int Depth => 1;
 
-        public int Depth => 1;
+        public override int FieldCount { get; }
 
-        public int FieldCount { get; }
+        public override bool IsClosed => _closed;
 
-        public bool IsClosed { get; private set; }
+        public override int RecordsAffected => -1;
 
-        public int RecordsAffected => -1;
+        public override bool NextResult() => false;
 
-        public bool NextResult()
-        {
-            return false;
-        }
+        public override void Close() => _closed = true;
 
-        public bool Read()
-        {
-            return _iterator.MoveNext();
-        }
+        public override string GetName(int i) => throw new NotImplementedException();
 
-        public void Close()
-        {
-            IsClosed = true;
-        }
+        public override string GetDataTypeName(int i) => throw new NotImplementedException();
 
-        public bool IsDBNull(int i)
-        {
-            return GetValue(i) is null;
-        }
+        public override Type GetFieldType(int i) => throw new NotImplementedException();
 
-        public abstract object GetValue(int i);
+        public override int GetOrdinal(string name) => throw new NotImplementedException();
 
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
+        public override bool GetBoolean(int i) => throw new NotImplementedException();
 
-        protected virtual void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                _iterator.Dispose();
-            }
-        }
+        public override byte GetByte(int i) => throw new NotImplementedException();
 
-        public object this[int i] => throw new NotImplementedException();
-
-        public object this[string name] => throw new NotImplementedException();
-
-        public DataTable GetSchemaTable()
-        {
+        public override long GetBytes(int i, long fieldOffset, byte[] buffer, int bufferoffset, int length) =>
             throw new NotImplementedException();
-        }
 
-        public string GetName(int i)
-        {
-            throw new NotImplementedException();
-        }
+        public override char GetChar(int i) => throw new NotImplementedException();
 
-        public string GetDataTypeName(int i)
-        {
+        public override long GetChars(int i, long fieldoffset, char[] buffer, int bufferoffset, int length) =>
             throw new NotImplementedException();
-        }
 
-        public Type GetFieldType(int i)
-        {
-            throw new NotImplementedException();
-        }
+        public override Guid GetGuid(int i) => throw new NotImplementedException();
 
-        public int GetValues(object[] values)
-        {
-            throw new NotImplementedException();
-        }
+        public override short GetInt16(int i) => throw new NotImplementedException();
 
-        public int GetOrdinal(string name)
-        {
-            throw new NotImplementedException();
-        }
+        public override int GetInt32(int i) => throw new NotImplementedException();
 
-        public bool GetBoolean(int i)
-        {
-            throw new NotImplementedException();
-        }
+        public override long GetInt64(int i) => throw new NotImplementedException();
 
-        public byte GetByte(int i)
-        {
-            throw new NotImplementedException();
-        }
+        public override float GetFloat(int i) => throw new NotImplementedException();
 
-        public long GetBytes(int i, long fieldOffset, byte[] buffer, int bufferoffset, int length)
-        {
-            throw new NotImplementedException();
-        }
+        public override double GetDouble(int i) => throw new NotImplementedException();
 
-        public char GetChar(int i)
-        {
-            throw new NotImplementedException();
-        }
+        public override string GetString(int i) => throw new NotImplementedException();
 
-        public long GetChars(int i, long fieldoffset, char[] buffer, int bufferoffset, int length)
-        {
-            throw new NotImplementedException();
-        }
+        public override decimal GetDecimal(int i) => throw new NotImplementedException();
 
-        public Guid GetGuid(int i)
-        {
-            throw new NotImplementedException();
-        }
+        public override DateTime GetDateTime(int i) => throw new NotImplementedException();
 
-        public short GetInt16(int i)
-        {
-            throw new NotImplementedException();
-        }
+        public override object this[int ordinal] => throw new NotImplementedException();
 
-        public int GetInt32(int i)
-        {
-            throw new NotImplementedException();
-        }
+        public override object this[string name] => throw new NotImplementedException();
 
-        public long GetInt64(int i)
-        {
-            throw new NotImplementedException();
-        }
-
-        public float GetFloat(int i)
-        {
-            throw new NotImplementedException();
-        }
-
-        public double GetDouble(int i)
-        {
-            throw new NotImplementedException();
-        }
-
-        public string GetString(int i)
-        {
-            throw new NotImplementedException();
-        }
-
-        public decimal GetDecimal(int i)
-        {
-            throw new NotImplementedException();
-        }
-
-        public DateTime GetDateTime(int i)
-        {
-            throw new NotImplementedException();
-        }
-
-        public IDataReader GetData(int i)
-        {
-            throw new NotImplementedException();
-        }
+        public override IEnumerator GetEnumerator() => throw new NotImplementedException();
     }
 }

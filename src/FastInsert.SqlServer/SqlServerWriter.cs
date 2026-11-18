@@ -18,12 +18,14 @@ namespace FastInsert.SqlServer
             _connection = connection;
         }
 
-        public async Task WriteAsync(IEnumerable<T> data, CancellationToken cancellationToken)
+        public async Task WriteAsync(string tableName, IReadOnlyList<T> data, CancellationToken cancellationToken)
         {
             using (var sqlBulkCopy = new SqlBulkCopy(_connection, SqlBulkCopyOptions.TableLock, null))
             using (var reader = CreateDataReader(data))
             {
+                sqlBulkCopy.DestinationTableName = tableName;
                 sqlBulkCopy.BatchSize = _batchSize;
+                sqlBulkCopy.EnableStreaming = true;
 
                 ConfigureMappings(sqlBulkCopy);
 
@@ -31,7 +33,7 @@ namespace FastInsert.SqlServer
             }
         }
 
-        protected abstract IDataReader CreateDataReader(IEnumerable<T> data);
+        protected abstract IDataReader CreateDataReader(IReadOnlyList<T> data);
 
         protected abstract void ConfigureMappings(SqlBulkCopy sqlBulkCopy);
     }

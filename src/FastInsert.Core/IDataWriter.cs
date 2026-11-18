@@ -6,6 +6,6 @@ namespace FastInsert.Core
 {
     public interface IDataWriter<in T>
     {
-        Task WriteAsync(IEnumerable<T> data, CancellationToken cancellationToken);
+        Task WriteAsync(string tableName, IReadOnlyList<T> data, CancellationToken cancellationToken);
     }
 }

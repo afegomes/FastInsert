@@ -5,7 +5,7 @@ namespace FastInsert.Core
     [AttributeUsage(AttributeTargets.Class)]
     public class BulkInsertAttribute : Attribute
     {
-        public BulkInsertAttribute(int batchSize = 1000)
+        public BulkInsertAttribute(int batchSize = 10_000)
         {
             BatchSize = batchSize;
         }

@@ -39,7 +39,7 @@ public class DataWriterTest(DatabaseFixture database) : IClassFixture<DatabaseFi
         var writer = new StandardWriter(database.Connection);
 
         // Act
-        await writer.WriteAsync(data, CancellationToken.None);
+        await writer.WriteAsync("Standard", data, CancellationToken.None);
 
         // Assert
         var result = await database.Connection.QueryAsync<Standard>("SELECT * FROM Standard");
@@ -62,7 +62,7 @@ public class DataWriterTest(DatabaseFixture database) : IClassFixture<DatabaseFi
         var writer = new CustomizedWriter(database.Connection);
 
         // Act
-        await writer.WriteAsync(data, CancellationToken.None);
+        await writer.WriteAsync("CustomTable", data, CancellationToken.None);
 
         // Assert
         var result = await database.Connection.QuerySingleAsync("SELECT * FROM CustomTable");
@@ -108,7 +108,6 @@ public class Standard
 }
 
 [BulkInsert(100)]
-[Table("CustomTable")]
 public class Customized
 {
     [Column("CustomColumn")]
