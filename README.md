@@ -90,10 +90,15 @@ Distributed under the GPL-3.0 License. See `LICENSE` for more information.
 
 ## Changelog
 
+### 1.2.0 (2026-11-18)
+
+* Downgrade to .NET Standard 2.0 for IDE compatibility
+* SQL Server writer optimization
+
 ### 1.1.0 (2024-02-20)
 
-Add support for nested classes
+* Add support for nested classes
 
 ### 1.0.0 (2024-01-23)
 
-First release
+* First release
