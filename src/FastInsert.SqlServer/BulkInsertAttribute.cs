@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace FastInsert.Core
+namespace FastInsert.SqlServer
 {
     [AttributeUsage(AttributeTargets.Class)]
     public class BulkInsertAttribute : Attribute

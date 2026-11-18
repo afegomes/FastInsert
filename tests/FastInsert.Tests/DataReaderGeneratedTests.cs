@@ -1,6 +1,5 @@
 using System.Data;
 using System.Reflection;
-using FastInsert.Core;
 using FastInsert.SqlServer;
 using FastInsert.Writers;
 using FluentAssertions;

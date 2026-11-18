@@ -2,7 +2,7 @@
 using System.Collections;
 using System.Data.Common;
 
-namespace FastInsert.Core
+namespace FastInsert.SqlServer
 {
     public abstract class DataReaderBase : DbDataReader
     {

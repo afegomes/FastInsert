@@ -12,7 +12,7 @@ namespace FastInsert.SqlServer.SourceGenerators
     [Generator]
     public sealed class FastInsertIncrementalGenerator : IIncrementalGenerator
     {
-        private const string BulkInsertAttribute = "FastInsert.Core.BulkInsertAttribute";
+        private const string BulkInsertAttribute = "FastInsert.SqlServer.BulkInsertAttribute";
         private const string ColumnAttribute = "System.ComponentModel.DataAnnotations.Schema.ColumnAttribute";
 
         public void Initialize(IncrementalGeneratorInitializationContext context)
@@ -195,7 +195,7 @@ namespace FastInsert.SqlServer.SourceGenerators
 
                 foreach (var entry in entries)
                 {
-                    writer.WriteLine($"services.AddScoped<FastInsert.Core.IDataWriter<{entry.EntityFullName}>, {entry.WriterFullName}>();");
+                    writer.WriteLine($"services.AddScoped<FastInsert.SqlServer.IDataWriter<{entry.EntityFullName}>, {entry.WriterFullName}>();");
                 }
 
                 writer.WriteLine();
@@ -232,7 +232,7 @@ namespace FastInsert.SqlServer.SourceGenerators
 
         private static void WriteInternalDataReaderClass(IndentedTextWriter writer, EntityModel model)
         {
-            writer.WriteLine($"private sealed class InternalDataReader : FastInsert.Core.DataReaderBase");
+            writer.WriteLine($"private sealed class InternalDataReader : FastInsert.SqlServer.DataReaderBase");
             writer.WriteLine("{");
             writer.Indent++;
 

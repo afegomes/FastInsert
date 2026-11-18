@@ -2,7 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace FastInsert.Core
+namespace FastInsert.SqlServer
 {
     public interface IDataWriter<in T>
     {

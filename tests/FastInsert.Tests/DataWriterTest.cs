@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using Dapper;
-using FastInsert.Core;
+using FastInsert.SqlServer;
 using FastInsert.Writers;
 using FluentAssertions;
 using Xunit;
