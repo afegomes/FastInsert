@@ -32,7 +32,8 @@ public class DataWriterTest(DatabaseFixture database) : IClassFixture<DatabaseFi
                 SomeString = "All your base are belong yo us",
                 SomeGuid = Guid.Parse("70daaf11-392f-4f1d-9d95-111981d26bf2"),
                 SomeTimeSpan = TimeSpan.FromSeconds(12),
-                SomeDateTime = new DateTime(2023, 07, 29, 15, 43, 20, DateTimeKind.Utc)
+                SomeDateTime = new DateTime(2023, 07, 29, 15, 43, 20, DateTimeKind.Utc),
+                IgnoredValue = 100
             }
         };
 
@@ -44,7 +45,7 @@ public class DataWriterTest(DatabaseFixture database) : IClassFixture<DatabaseFi
         // Assert
         var result = await database.Connection.QueryAsync<Standard>("SELECT * FROM Standard");
 
-        result.Should().BeEquivalentTo(data);
+        result.Should().BeEquivalentTo(data, options => options.Excluding(item => item.IgnoredValue));
     }
 
     [Fact]
@@ -105,6 +106,9 @@ public class Standard
     public TimeSpan SomeTimeSpan { get; init; }
 
     public DateTime SomeDateTime { get; init; }
+
+    [NotMapped]
+    public int IgnoredValue { get; init; }
 }
 
 [BulkInsert(100)]

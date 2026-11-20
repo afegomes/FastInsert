@@ -1,8 +1,10 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
 using System.Reflection;
 using FastInsert.SqlServer;
 using FastInsert.Writers;
 using FluentAssertions;
+using Microsoft.Data.SqlClient;
 using Xunit;
 
 namespace FastInsert.Tests;
@@ -16,6 +18,33 @@ public class DataReaderGeneratedTests
                 BindingFlags.NonPublic | BindingFlags.Instance);
 
         return (IDataReader)method!.Invoke(writer, [data]);
+    }
+
+    [Fact]
+    public void NotMappedProperties_ShouldBeExcludedFromReaderAndMappings()
+    {
+        var writer = new NotMappedEntityWriter(null);
+        using var reader = CreateDataReader(writer, [new NotMappedEntity { BaseValue = 7, Name = "mapped" }]);
+
+        reader.Read().Should().BeTrue();
+        reader.FieldCount.Should().Be(2);
+        reader.GetInt32(0).Should().Be(7);
+        reader.GetString(1).Should().Be("mapped");
+        var values = new object[3];
+        reader.GetValues(values).Should().Be(2);
+        values[0].Should().Be(7);
+        values[1].Should().Be("mapped");
+        reader.Invoking(r => r.GetValue(2)).Should().Throw<IndexOutOfRangeException>();
+
+        using var connection = new SqlConnection();
+        using var bulkCopy = new SqlBulkCopy(connection);
+        typeof(NotMappedEntityWriter).GetMethod("ConfigureMappings", BindingFlags.NonPublic | BindingFlags.Instance)!
+            .Invoke(writer, [bulkCopy]);
+        bulkCopy.ColumnMappings.Count.Should().Be(2);
+        bulkCopy.ColumnMappings[0].SourceOrdinal.Should().Be(0);
+        bulkCopy.ColumnMappings[0].DestinationColumn.Should().Be("BaseValue");
+        bulkCopy.ColumnMappings[1].SourceOrdinal.Should().Be(1);
+        bulkCopy.ColumnMappings[1].DestinationColumn.Should().Be("renamed");
     }
 
     [Fact]
@@ -224,6 +253,27 @@ public class DataReaderGeneratedTests
         values[4].Should().Be(DBNull.Value);
         values[6].Should().Be(DBNull.Value);
     }
+}
+
+public class NotMappedBaseEntity
+{
+    [NotMapped]
+    public int IgnoredBase { get; set; }
+
+    public int BaseValue { get; set; }
+}
+
+[BulkInsert]
+public class NotMappedEntity : NotMappedBaseEntity
+{
+    [NotMapped, Column("ignored")]
+    public string Ignored { get; set; }
+
+    [Column("renamed")]
+    public string Name { get; set; }
+
+    [NotMapped]
+    public int IgnoredLast { get; set; }
 }
 
 [BulkInsert]

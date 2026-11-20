@@ -14,6 +14,7 @@ namespace FastInsert.SourceGenerators
     {
         private const string BulkInsertAttribute = "FastInsert.SqlServer.BulkInsertAttribute";
         private const string ColumnAttribute = "System.ComponentModel.DataAnnotations.Schema.ColumnAttribute";
+        private const string NotMappedAttribute = "System.ComponentModel.DataAnnotations.Schema.NotMappedAttribute";
 
         public void Initialize(IncrementalGeneratorInitializationContext context)
         {
@@ -487,7 +488,8 @@ namespace FastInsert.SourceGenerators
             {
                 if (!member.IsStatic
                     && member.DeclaredAccessibility == Accessibility.Public
-                    && member is IPropertySymbol prop)
+                    && member is IPropertySymbol prop
+                    && !prop.GetAttributes().Any(a => a.AttributeClass?.ToDisplayString() == NotMappedAttribute))
                 {
                     builder.Add(prop);
                 }

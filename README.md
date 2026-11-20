@@ -47,14 +47,23 @@ The batch size will be 10000 by default, but it can be customized:
    }
    ```
 
-By default, the properties will be mapped to columns with the same name. The name can be overridden using
-the `System.ComponentModel.DataAnnotations.Schema.ColumnAttribute` attribute:
+By default, the properties will be mapped to columns with the same name. The name can be overridden using `System.ComponentModel.DataAnnotations.Schema.ColumnAttribute`:
 
    ```csharp
    public class Customer
    {
        [Column("phone_number")]
        public string PhoneNumber { get; set; }
+   }
+   ```
+
+To exclude a property from the mapped, use `System.ComponentModel.DataAnnotations.Schema.NotMappedAttribute`:
+
+   ```csharp
+   public class Customer
+   {
+       [NotMapped]
+       public int Migrated { get; set; }
    }
    ```
 
@@ -89,6 +98,10 @@ Pull requests are welcome, but please open an issue first to discuss your idea.
 Distributed under the GPL-3.0 License. See `LICENSE` for more information.
 
 ## Changelog
+
+### 1.3.0 (2026-11-20)
+
+* Add support for excluding properties from the mapping
 
 ### 1.2.0 (2026-11-18)
 
